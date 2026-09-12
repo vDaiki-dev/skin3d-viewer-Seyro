@@ -1,1 +1,0 @@
-# skin3d-viewer-Seyro
