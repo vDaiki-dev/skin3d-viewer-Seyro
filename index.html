@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0d0d0d" />
+  <title>Skin3D Viewer</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+
+    :root {
+      --orange: #ff6a00;
+      --orange-dim: #c24d00;
+      --orange-glow: #ff6a0055;
+      --bg: #0d0d0d;
+      --bg2: #141414;
+      --bg3: #1c1c1c;
+      --panel: #191919;
+      --border: #2a2a2a;
+      --text: #e0e0e0;
+      --text-dim: #888;
+      --pixel: 2px;
+      --focus: #ffb37a;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'VT323', monospace;
+      font-size: 20px;
+      overflow-x: hidden;
+    }
+
+    button, input { font: inherit; }
+    button:focus-visible, input:focus-visible, .upload-zone:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      background: repeating-linear-gradient(to bottom, transparent 0 3px, rgb(0 0 0 / 7%) 3px 4px);
+    }
+
+    header, .left-panel, .right-panel { transition: filter .5s ease, opacity .5s ease; }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      min-height: 78px;
+      padding: 14px 28px;
+      background: rgb(20 20 20 / 94%);
+      border-bottom: var(--pixel) solid var(--border);
+      backdrop-filter: blur(8px);
+    }
+
+    .logo {
+      color: var(--orange);
+      font: 13px/1.6 'Press Start 2P', monospace;
+      letter-spacing: 1px;
+      text-shadow: 3px 3px 0 var(--orange-dim), 0 0 18px var(--orange-glow);
+      white-space: nowrap;
+    }
+    .logo span { color: #fff; }
+
+    header nav { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+
+    .nav-btn, .anim-btn, .px-btn {
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: color .12s, border-color .12s, background .12s, transform .05s;
+    }
+
+    .nav-btn {
+      padding: 6px 12px;
+      color: var(--text-dim);
+      background: transparent;
+      border: var(--pixel) solid var(--border);
+    }
+    .nav-btn:hover, .nav-btn.active { color: var(--orange); border-color: var(--orange); background: #ff6a0012; }
+
+    main {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr) 250px;
+      height: calc(100vh - 78px);
+      min-height: 580px;
+    }
+
+    .left-panel, .right-panel {
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      background: rgb(25 25 25 / 94%);
+    }
+    .left-panel { border-right: var(--pixel) solid var(--border); }
+    .right-panel { border-left: var(--pixel) solid var(--border); }
+
+    .section { padding: 14px; border-bottom: var(--pixel) solid var(--border); }
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      color: var(--orange);
+      font: 7px 'Press Start 2P', monospace;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    .section-title::after { content: ''; flex: 1; height: var(--pixel); background: var(--border); }
+
+    .px-input {
+      width: 100%;
+      padding: 8px 12px;
+      color: var(--text);
+      background: var(--bg3);
+      border: var(--pixel) solid var(--border);
+      outline: none;
+    }
+    .px-input:focus { border-color: var(--orange); }
+    .px-input::placeholder { color: var(--text-dim); }
+    .input-row { display: flex; gap: 6px; }
+    .input-row .px-input { flex: 1; min-width: 0; }
+
+    .px-btn {
+      width: 100%;
+      margin-top: 8px;
+      padding: 10px 16px;
+      color: #000;
+      background: var(--orange);
+      border: 0;
+      box-shadow: 3px 3px 0 var(--orange-dim);
+      font: 8px 'Press Start 2P', monospace;
+      letter-spacing: 1px;
+    }
+    .px-btn:hover { background: #ff8c33; }
+    .px-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--orange-dim); }
+    .px-btn.secondary { color: var(--orange); background: var(--bg3); border: var(--pixel) solid var(--orange); }
+    .px-btn.secondary:hover { background: #ff6a0018; }
+    .input-row .px-btn { width: auto; margin-top: 0; padding: 8px 12px; }
+
+    .upload-zone {
+      padding: 18px 10px;
+      color: var(--text-dim);
+      text-align: center;
+      line-height: 1.6;
+      background: var(--bg3);
+      border: var(--pixel) dashed var(--border);
+      cursor: pointer;
+      transition: border-color .15s, background .15s, color .15s;
+    }
+    .upload-zone:hover, .upload-zone.drag-over { color: var(--text); background: #ff6a000a; border-color: var(--orange); }
+    .upload-zone .icon { display: block; margin-bottom: 4px; font-size: 24px; }
+    #file-input, #cape-input { display: none; }
+
+    .slider-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; font-size: 17px; }
+    .slider-row label { color: var(--text-dim); }
+    .slider-row .val { min-width: 42px; color: var(--orange); text-align: right; }
+    input[type='range'] { width: 100%; margin-top: 2px; accent-color: var(--orange); cursor: pointer; }
+
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; color: var(--text-dim); }
+    .toggle {
+      position: relative;
+      width: 36px;
+      height: 18px;
+      background: var(--bg3);
+      border: var(--pixel) solid var(--border);
+      cursor: pointer;
+    }
+    .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; background: #fff; transition: left .15s; }
+    .toggle.on { background: var(--orange); border-color: var(--orange-dim); }
+    .toggle.on::after { left: 22px; }
+
+    .anim-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .anim-btn { padding: 9px 4px; color: var(--text-dim); background: var(--bg3); border: var(--pixel) solid var(--border); font: 6px/1.8 'Press Start 2P', monospace; }
+    .anim-btn:hover, .anim-btn.active { color: var(--orange); background: #ff6a0018; border-color: var(--orange); }
+
+    .center-area {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: var(--bg);
+      isolation: isolate;
+    }
+    .center-area::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 32px 32px;
+      opacity: .15;
+    }
+    .center-area::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 35%, rgb(0 0 0 / 82%) 125%);
+    }
+
+    #viewer-wrap { position: relative; z-index: 1; border: var(--pixel) solid var(--border); box-shadow: 0 0 28px rgb(0 0 0 / 55%); }
+    #skin-canvas { display: block; image-rendering: pixelated; }
+    #empty-state { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; pointer-events: none; }
+    #empty-state .empty-icon { font-size: 48px; opacity: .3; }
+    #empty-state p { color: var(--text-dim); font: 7px/2 'Press Start 2P', monospace; text-align: center; }
+    .bottom-bar { position: absolute; right: 0; bottom: 0; left: 0; z-index: 3; display: flex; align-items: center; gap: 16px; padding: 8px 18px; color: var(--text-dim); background: rgb(13 13 13 / 80%); border-top: var(--pixel) solid var(--border); backdrop-filter: blur(4px); }
+    .stat { display: flex; align-items: center; gap: 5px; }
+    .stat-val { color: var(--orange); }
+    .status-dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; background: var(--border); animation: blink 1s step-end infinite; }
+    .status-dot.loading { background: var(--orange); }
+    .status-dot.ok { background: #4caf50; animation: none; }
+    .status-dot.err { background: #f44; animation: none; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .color-swatch { display: inline-block; width: 16px; height: 16px; margin-right: 4px; vertical-align: middle; border: var(--pixel) solid var(--border); cursor: pointer; }
+    .layer-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #222; font-size: 16px; }
+    .layer-dot { width: 10px; height: 10px; flex-shrink: 0; border: var(--pixel) solid; }
+    .layer-name { flex: 1; color: var(--text-dim); }
+    .layer-offset { width: 40px; color: var(--orange); font-size: 15px; text-align: right; }
+
+    #toast { position: fixed; bottom: 24px; left: 50%; z-index: 9998; max-width: min(90vw, 620px); padding: 12px 20px; color: var(--text); background: var(--panel); border: var(--pixel) solid var(--orange); box-shadow: 4px 4px 0 var(--orange-dim); font: 7px 'Press Start 2P', monospace; white-space: nowrap; pointer-events: none; transform: translate(-50%, 80px); transition: transform .25s; }
+    #toast.show { transform: translate(-50%, 0); }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg2); }
+    ::-webkit-scrollbar-thumb { background: var(--border); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--orange-dim); }
+
+    @media (min-width: 901px) {
+      body:has(.center-area:hover) .left-panel,
+      body:has(.center-area:hover) .right-panel,
+      body:has(.center-area:hover) header { filter: blur(6px); opacity: .52; }
+    }
+    @media (max-width: 900px) {
+      header { position: relative; min-height: auto; padding: 12px 14px; }
+      header nav { gap: 5px; }
+      .nav-btn { padding: 5px 8px; font-size: 16px; }
+      main { grid-template-columns: 1fr; grid-template-rows: auto minmax(360px, 58vh) auto; height: auto; min-height: 0; }
+      .left-panel, .right-panel { border: 0; }
+      .center-area { min-height: 360px; }
+      #toast { white-space: normal; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">SKIN<span>3D</span><br>VIEWER</div>
+    <nav aria-label="Modos de vista">
+      <button class="nav-btn active" id="btn-viewer" type="button" onclick="setMode('viewer')">VIEWER</button>
+      <button class="nav-btn" id="btn-layers" type="button" onclick="setMode('layers')">LAYERS</button>
+      <button class="nav-btn" id="btn-debug" type="button" onclick="setMode('debug')">DEBUG</button>
+      <button class="nav-btn" id="btn-music" type="button" onclick="toggleMusic()">MUSIC: OFF</button>
+    </nav>
+  </header>
+
+  <main>
+    <aside class="left-panel">
+      <div class="section">
+        <div class="section-title">Username</div>
+        <div class="input-row">
+          <input class="px-input" id="username-input" type="text" placeholder="Notch" autocomplete="off" aria-label="Nombre de usuario de Minecraft" />
+          <button class="px-btn" type="button" onclick="loadByUsername()" aria-label="Cargar skin">▶</button>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Upload Skin</div>
+        <div class="upload-zone" id="drop-zone" role="button" tabindex="0">
+          <span class="icon">⬆</span>Drop .png here<br>or click to browse
+        </div>
+        <input type="file" id="file-input" accept=".png,image/png" />
+      </div>
+      <div class="section">
+        <div class="section-title">Cape</div>
+        <div class="upload-zone" id="cape-zone" style="padding:12px 10px;font-size:16px" role="button" tabindex="0">
+          <span class="icon" style="font-size:20px">🧣</span>Upload cape .png
+        </div>
+        <input type="file" id="cape-input" accept=".png,image/png" />
+      </div>
+      <div class="section">
+        <div class="section-title">Quick Load</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <button class="px-btn secondary" type="button" onclick="loadPreset('Notch')">NOTCH</button>
+          <button class="px-btn secondary" type="button" onclick="loadPreset('jeb_')">JEB_</button>
+          <button class="px-btn secondary" type="button" onclick="loadPreset('Dream')">DREAM</button>
+          <button class="px-btn secondary" type="button" onclick="loadPreset('Technoblade')">TECHNOBLADE</button>
+        </div>
+      </div>
+    </aside>
+
+    <section class="center-area" aria-label="Visor 3D">
+      <div id="viewer-wrap">
+        <canvas id="skin-canvas"></canvas>
+        <div id="empty-state">
+          <div class="empty-icon">🎮</div>
+          <p>NO SKIN LOADED<br />SEARCH OR UPLOAD<br />TO BEGIN</p>
+        </div>
+      </div>
+      <div class="bottom-bar">
+        <div class="stat"><span class="status-dot" id="status-dot"></span><span id="status-text">LOADING LIBRARY...</span></div>
+        <div class="stat" style="margin-left:auto">FPS <span class="stat-val" id="fps-val">--</span></div>
+        <div class="stat">ANIM <span class="stat-val" id="anim-val">IDLE</span></div>
+      </div>
+    </section>
+
+    <aside class="right-panel">
+      <div class="section">
+        <div class="section-title">Animation</div>
+        <div class="anim-grid">
+          <button class="anim-btn active" id="anim-idle" type="button" onclick="setAnim('idle')">IDLE</button>
+          <button class="anim-btn" id="anim-walk" type="button" onclick="setAnim('walk')">WALK</button>
+          <button class="anim-btn" id="anim-run" type="button" onclick="setAnim('run')">RUN</button>
+          <button class="anim-btn" id="anim-wave" type="button" onclick="setAnim('wave')">WAVE</button>
+          <button class="anim-btn" id="anim-fly" type="button" onclick="setAnim('fly')">FLY</button>
+          <button class="anim-btn" id="anim-none" type="button" onclick="setAnim('none')">STOP</button>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Controls</div>
+        <div class="toggle-row"><span>Auto rotate</span><div class="toggle on" id="toggle-rotate" role="switch" aria-checked="true" tabindex="0" onclick="toggleOpt('rotate')"></div></div>
+        <div class="toggle-row"><span>Show cape</span><div class="toggle on" id="toggle-cape" role="switch" aria-checked="true" tabindex="0" onclick="toggleOpt('cape')"></div></div>
+        <div class="toggle-row"><span>Force slim model</span><div class="toggle" id="toggle-slim" role="switch" aria-checked="false" tabindex="0" onclick="toggleOpt('slim')"></div></div>
+        <small style="display:block;margin-top:8px;color:var(--text-dim);font-size:15px;line-height:1.2">Auto detects Steve/Alex correctly. Slim only forces a model when enabled.</small>
+      </div>
+      <div class="section">
+        <div class="section-title">Audio</div>
+        <div class="slider-row"><label for="volume-range">Volumen</label><span class="val" id="val-vol">30%</span></div>
+        <input id="volume-range" type="range" min="0" max="100" value="30" oninput="updateVolume(this.value)" />
+      </div>
+      <div class="section">
+        <div class="section-title">Lighting</div>
+        <div class="slider-row"><label for="ambient-range">Global</label><span class="val" id="val-ambient">1.0</span></div>
+        <input id="ambient-range" type="range" min="0" max="200" value="100" oninput="updateLight(this.value)" />
+        <div class="slider-row" style="margin-top:10px"><label>Light Color</label><span>
+          <span class="color-swatch" style="background:#fff" role="button" tabindex="0" onclick="setLightColor(255,255,255)" title="Blanca"></span>
+          <span class="color-swatch" style="background:#ff6a00" role="button" tabindex="0" onclick="setLightColor(255,106,0)" title="Naranja"></span>
+          <span class="color-swatch" style="background:#4499ff" role="button" tabindex="0" onclick="setLightColor(68,153,255)" title="Azul"></span>
+          <span class="color-swatch" style="background:#44ff88" role="button" tabindex="0" onclick="setLightColor(68,255,136)" title="Verde"></span>
+        </span></div>
+      </div>
+      <div class="section">
+        <div class="section-title">Camera</div>
+        <div class="slider-row"><label for="zoom-range">Zoom</label><span class="val" id="val-zoom">1.0</span></div>
+        <input id="zoom-range" type="range" min="50" max="200" value="100" oninput="updateZoom(this.value)" />
+        <div class="slider-row" style="margin-top:10px"><label for="speed-range">Anim Speed</label><span class="val" id="val-speed">1.0x</span></div>
+        <input id="speed-range" type="range" min="10" max="300" value="100" oninput="updateSpeed(this.value)" />
+      </div>
+      <div class="section" id="layer-section">
+        <div class="section-title">3D Layers</div>
+        <div id="layer-list"><div style="color:var(--text-dim);font-size:16px">Load a skin first</div></div>
+        <div class="slider-row" style="margin-top:12px"><label for="explode-range">Explode</label><span class="val" id="val-explode">0</span></div>
+        <input id="explode-range" type="range" min="0" max="100" value="0" oninput="explodeLayers(this.value)" />
+      </div>
+      <div class="section">
+        <div class="section-title">Export</div>
+        <button class="px-btn secondary" type="button" onclick="exportPNG()">SAVE PNG</button>
+      </div>
+    </aside>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <audio id="bg-music" loop preload="metadata"><source src="musica.mp3" type="audio/mpeg" /></audio>
+
+  <script src="https://cdn.jsdelivr.net/npm/skinview3d@3.0.0-rc.3/bundles/skinview3d.bundle.js"></script>
+  <script>
+    'use strict';
+
+    let viewer = null;
+    let autoRotate = true;
+    let showCape = true;
+    let forceSlim = false;
+    let animSpeed = 1;
+    let currentSkinUrl = null;
+    let currentCapeUrl = null;
+    let currentAnimName = 'idle';
+    let currentExplode = 0;
+    let toastTimer = null;
+    let fpsFrames = 0;
+    let loadToken = 0;
+
+    const $ = (id) => document.getElementById(id);
+
+    function setStatus(state, text) {
+      $('status-dot').className = 'status-dot ' + state;
+      $('status-text').textContent = text;
+    }
+
+    function toast(message) {
+      const el = $('toast');
+      el.textContent = message;
+      el.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+    }
+    window.toast = toast;
+
+    function setToggle(id, on) {
+      const el = $(id);
+      el.classList.toggle('on', on);
+      el.setAttribute('aria-checked', String(on));
+    }
+
+    function initViewer() {
+      if (!window.skinview3d) {
+        setStatus('err', 'LIBRARY ERROR');
+        toast('No se pudo cargar skinview3d. Revisa tu conexión.');
+        return;
+      }
+
+      const wrap = $('viewer-wrap');
+      const parentWidth = wrap.parentElement.clientWidth || 500;
+      const maxWidth = window.innerWidth < 900 ? Math.min(320, parentWidth - 28) : Math.min(460, parentWidth - 70);
+      const width = Math.max(220, maxWidth);
+      const height = Math.round(width * 1.35);
+      wrap.style.width = width + 'px';
+      wrap.style.height = height + 'px';
+
+      viewer = new skinview3d.SkinViewer({ canvas: $('skin-canvas'), width, height, renderPaused: false });
+      viewer.fov = 40;
+      viewer.zoom = 1;
+      viewer.globalLight.intensity = 3;
+      viewer.cameraLight.intensity = 1;
+      viewer.autoRotate = true;
+      viewer.autoRotateSpeed = .8;
+
+      const controls = skinview3d.createOrbitControls(viewer);
+      controls.enableRotate = true;
+      controls.enableZoom = true;
+      controls.enablePan = false;
+
+      const originalRender = viewer.renderer.render.bind(viewer.renderer);
+      viewer.renderer.render = (...args) => { fpsFrames += 1; return originalRender(...args); };
+
+      setAnim('idle');
+      setStatus('ok', 'READY');
+    }
+
+    function resizeViewer() {
+      if (!viewer) return;
+      const wrap = $('viewer-wrap');
+      const parentWidth = wrap.parentElement.clientWidth || 500;
+      const maxWidth = window.innerWidth < 900 ? Math.min(320, parentWidth - 28) : Math.min(460, parentWidth - 70);
+      const width = Math.max(220, maxWidth);
+      const height = Math.round(width * 1.35);
+      wrap.style.width = width + 'px';
+      wrap.style.height = height + 'px';
+      if (typeof viewer.setSize === 'function') viewer.setSize(width, height);
+    }
+
+    async function loadSkin(url, capeUrl = null, forced = forceSlim) {
+      if (!viewer) { toast('El visor todavía está cargando.'); return; }
+      const token = ++loadToken;
+      setStatus('loading', 'LOADING...');
+
+      try {
+        // skinview3d usa "auto-detect" para leer la transparencia de la textura.
+        const model = forced ? 'slim' : 'auto-detect';
+        await viewer.loadSkin(url, { model });
+        if (token !== loadToken) return;
+
+        currentSkinUrl = url;
+        $('empty-state').style.display = 'none';
+        setToggle('toggle-slim', forced);
+
+        if (capeUrl || currentCapeUrl) {
+          try { await viewer.loadCape(capeUrl || currentCapeUrl); } catch (capeError) { console.warn('Cape error:', capeError); }
+        }
+
+        updateCapeVisibility();
+        updateLayerList();
+        applyExplode(currentExplode);
+        setStatus('ok', 'SKIN LOADED');
+        toast('✓ Skin loaded!');
+      } catch (error) {
+        if (token !== loadToken) return;
+        setStatus('err', 'LOAD ERR');
+        toast('Could not load skin');
+        console.error(error);
+      }
+    }
+    window.loadSkin = loadSkin;
+
+    function loadByUsername() {
+      const name = $('username-input').value.trim();
+      if (!name) { toast('Enter a username'); return; }
+      loadSkin('https://mc-heads.net/skin/' + encodeURIComponent(name));
+    }
+    window.loadByUsername = loadByUsername;
+
+    function loadPreset(name) {
+      $('username-input').value = name;
+      loadSkin('https://mc-heads.net/skin/' + encodeURIComponent(name));
+    }
+    window.loadPreset = loadPreset;
+
+    function handleSkinFile(file) {
+      if (!file || file.type !== 'image/png') { toast('Usa un archivo PNG de skin.'); return; }
+      loadSkin(URL.createObjectURL(file));
+    }
+
+    function handleCapeFile(file) {
+      if (!file || file.type !== 'image/png') { toast('Usa un archivo PNG de capa.'); return; }
+      currentCapeUrl = URL.createObjectURL(file);
+      if (viewer && currentSkinUrl) {
+        viewer.loadCape(currentCapeUrl).then(() => { updateCapeVisibility(); toast('Cape loaded!'); }).catch(() => toast('Could not load cape'));
+      } else toast('Load a skin first');
+    }
+
+    function setupUploadZone(zone, input, handler) {
+      zone.addEventListener('click', () => input.click());
+      zone.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); input.click(); } });
+      input.addEventListener('change', (event) => handler(event.target.files[0]));
+      zone.addEventListener('dragover', (event) => { event.preventDefault(); zone.classList.add('drag-over'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+      zone.addEventListener('drop', (event) => { event.preventDefault(); zone.classList.remove('drag-over'); handler(event.dataTransfer.files[0]); });
+    }
+
+    function updateCapeVisibility() {
+      const player = viewer && viewer.playerObject;
+      if (!player) return;
+      if (player.cape) player.cape.visible = showCape;
+      if (player.elytra) player.elytra.visible = showCape;
+    }
+
+    function setAnim(name) {
+      if (!viewer) return;
+      currentAnimName = name;
+      document.querySelectorAll('.anim-btn').forEach((button) => button.classList.remove('active'));
+      const button = $('anim-' + name);
+      if (button) button.classList.add('active');
+      $('anim-val').textContent = name.toUpperCase();
+      viewer.animation = null;
+
+      const animations = {
+        idle: 'IdleAnimation', walk: 'WalkingAnimation', run: 'RunningAnimation',
+        wave: 'WaveAnimation', fly: 'FlyingAnimation'
+      };
+      const AnimationClass = animations[name] && skinview3d[animations[name]];
+      if (AnimationClass) {
+        viewer.animation = new AnimationClass();
+        viewer.animation.speed = animSpeed;
+      }
+    }
+    window.setAnim = setAnim;
+
+    function toggleOpt(option) {
+      if (option === 'rotate') {
+        autoRotate = !autoRotate;
+        setToggle('toggle-rotate', autoRotate);
+        if (viewer) viewer.autoRotate = autoRotate;
+      } else if (option === 'cape') {
+        showCape = !showCape;
+        setToggle('toggle-cape', showCape);
+        updateCapeVisibility();
+      } else if (option === 'slim') {
+        forceSlim = !forceSlim;
+        setToggle('toggle-slim', forceSlim);
+        if (currentSkinUrl) loadSkin(currentSkinUrl, null, forceSlim);
+        else toast('Load a skin first');
+      }
+    }
+    window.toggleOpt = toggleOpt;
+
+    function updateLight(value) {
+      const v = Number(value) / 100;
+      $('val-ambient').textContent = v.toFixed(1);
+      if (viewer) { viewer.globalLight.intensity = v * 3; viewer.cameraLight.intensity = v; }
+    }
+    window.updateLight = updateLight;
+
+    function setLightColor(r, g, b) {
+      if (viewer) {
+        viewer.globalLight.color.setRGB(r / 255, g / 255, b / 255);
+        viewer.cameraLight.color.setRGB(r / 255, g / 255, b / 255);
+      }
+      toast('Light color changed');
+    }
+    window.setLightColor = setLightColor;
+
+    function updateZoom(value) {
+      const zoom = Number(value) / 100;
+      $('val-zoom').textContent = zoom.toFixed(1);
+      if (viewer) viewer.zoom = zoom;
+    }
+    window.updateZoom = updateZoom;
+
+    function updateSpeed(value) {
+      animSpeed = Number(value) / 100;
+      $('val-speed').textContent = animSpeed.toFixed(1) + 'x';
+      if (viewer && viewer.animation) viewer.animation.speed = animSpeed;
+    }
+    window.updateSpeed = updateSpeed;
+
+    function toggleMusic() {
+      const audio = $('bg-music');
+      const button = $('btn-music');
+      if (audio.paused) {
+        audio.volume = Number($('volume-range').value) / 100;
+        audio.play().then(() => { button.classList.add('active'); button.textContent = 'MUSIC: ON'; }).catch(() => toast('No se encontró musica.mp3 o el navegador bloqueó la reproducción.'));
+      } else {
+        audio.pause();
+        button.classList.remove('active');
+        button.textContent = 'MUSIC: OFF';
+      }
+    }
+    window.toggleMusic = toggleMusic;
+
+    function updateVolume(value) {
+      $('val-vol').textContent = value + '%';
+      $('bg-music').volume = Number(value) / 100;
+    }
+    window.updateVolume = updateVolume;
+
+    function updateLayerList() {
+      const items = [
+        ['HEAD outer', '#ff6a00'], ['BODY outer', '#ff9944'], ['R.ARM outer', '#ffbb66'],
+        ['L.ARM outer', '#ffcc88'], ['R.LEG outer', '#ff8833'], ['L.LEG outer', '#ff7722']
+      ];
+      $('layer-list').innerHTML = items.map(([name, color]) => `<div class="layer-item"><span class="layer-dot" style="border-color:${color};background:${color}33"></span><span class="layer-name">${name}</span><span class="layer-offset">0.00</span></div>`).join('');
+    }
+
+    function applyExplode(value) {
+      currentExplode = Number(value);
+      $('val-explode').textContent = String(currentExplode);
+      if (!viewer || !viewer.playerObject) return;
+      const p = viewer.playerObject;
+      const offset = (currentExplode / 100) * .15;
+      const move = (part, axis, amount) => { if (part && part.outerLayer && part.outerLayer.position) part.outerLayer.position[axis] = amount; };
+      try {
+        move(p.skin.head, 'y', offset * 2); move(p.skin.body, 'z', offset);
+        move(p.skin.leftArm, 'x', offset); move(p.skin.rightArm, 'x', -offset);
+        move(p.skin.leftLeg, 'x', offset * .5); move(p.skin.rightLeg, 'x', -offset * .5);
+      } catch (error) { console.warn('Layer structure unavailable:', error); }
+      document.querySelectorAll('.layer-offset').forEach((el) => { el.textContent = offset.toFixed(2); });
+    }
+    function explodeLayers(value) { applyExplode(value); }
+    window.explodeLayers = explodeLayers;
+
+    function setMode(mode) {
+      document.querySelectorAll('.nav-btn').forEach((button) => button.classList.remove('active'));
+      const button = $('btn-' + mode);
+      if (button) button.classList.add('active');
+      if (mode === 'layers') $('layer-section').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (mode === 'debug' && viewer) {
+        toast('WebGL2: ' + Boolean(viewer.renderer.capabilities.isWebGL2));
+        setTimeout(() => toast('MaxTex: ' + viewer.renderer.capabilities.maxTextureSize), 1400);
+      }
+    }
+    window.setMode = setMode;
+
+    function exportPNG() {
+      if (!viewer || !currentSkinUrl) { toast('Load a skin first'); return; }
+      try {
+        viewer.renderer.render(viewer.scene, viewer.camera);
+        const link = document.createElement('a');
+        link.download = 'skin3d.png';
+        link.href = viewer.canvas.toDataURL('image/png');
+        link.click();
+        toast('PNG saved!');
+      } catch (error) { console.error(error); toast('No se pudo exportar la imagen.'); }
+    }
+    window.exportPNG = exportPNG;
+
+    window.addEventListener('load', () => {
+      setupUploadZone($('drop-zone'), $('file-input'), handleSkinFile);
+      setupUploadZone($('cape-zone'), $('cape-input'), handleCapeFile);
+      $('username-input').addEventListener('keydown', (event) => { if (event.key === 'Enter') loadByUsername(); });
+      document.querySelectorAll('.toggle').forEach((toggle) => toggle.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggle.click(); } }));
+      initViewer();
+    });
+
+    window.addEventListener('resize', resizeViewer);
+    document.addEventListener('visibilitychange', () => {
+      if (!viewer) return;
+      if (document.hidden) {
+        viewer.autoRotate = false;
+        if (viewer.animation && typeof viewer.animation.pause === 'function') viewer.animation.pause();
+      } else {
+        viewer.autoRotate = autoRotate;
+        if (viewer.animation && typeof viewer.animation.resume === 'function') viewer.animation.resume();
+      }
+    });
+
+    setInterval(() => { $('fps-val').textContent = String(fpsFrames); fpsFrames = 0; }, 1000);
+  </script>
+</body>
+</html>
